@@ -1,0 +1,18 @@
+# Ignore virtual environments
+venv/
+test_env/
+
+# Ignore large files
+*.dll
+*.lib
+
+# Ignore Python cache and build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+
+# Ignore environment files
+.env
