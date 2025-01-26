@@ -2,12 +2,14 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import pipeline
+import uvicorn
 
 # Initialize FastAPI app
 app = FastAPI()
 
 # Load pre-trained model for chatbot
-chatbot = pipeline("text-generation", model="microsoft/DialoGPT-large")
+model_name = os.getenv("MODEL_NAME", "microsoft/DialoGPT-large")
+chatbot = pipeline("text-generation", model=model_name)
 
 # Predefined responses for real estate questions
 real_estate_faq = {
@@ -38,13 +40,9 @@ def chat(user_input: UserInput):
     
     # If not, generate a response using the chatbot
     try:
-        response = chatbot(question, max_length=1000, pad_token_id=50256)
+        response = chatbot(question, max_length=200, pad_token_id=50256)
         return {"response": response[0]["generated_text"]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
 
-# Make sure app runs on deployment services like Railway
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))  # Use PORT from environment or default to 8000
-    uvicorn.run(app, host="0.0.0.0", port=port)
 
