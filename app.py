@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import pipeline
@@ -6,9 +7,7 @@ from transformers import pipeline
 app = FastAPI()
 
 # Load pre-trained model for chatbot
-print("Loading model...")
 chatbot = pipeline("text-generation", model="microsoft/DialoGPT-large")
-print("Model loaded successfully!")
 
 # Predefined responses for real estate questions
 real_estate_faq = {
@@ -21,29 +20,31 @@ real_estate_faq = {
     "Is this house for rent or sale?": "This property is for sale."
 }
 
-# Define request schema using Pydantic
-class UserQuery(BaseModel):
-    message: str
+# Define request body using Pydantic
+class UserInput(BaseModel):
+    question: str
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Real Estate Chatbot! Ask me anything related to real estate."}
 
 @app.post("/chat/")
-def chat(query: UserQuery):
-    user_input = query.message.strip()
-    if not user_input:
-        raise HTTPException(status_code=400, detail="Input cannot be empty.")
+def chat(user_input: UserInput):
+    question = user_input.question
+
+    # Check if the user's question is in the FAQ
+    if question in real_estate_faq:
+        return {"response": real_estate_faq[question]}
     
-    # Check if the user's question matches the FAQ
-    for question, answer in real_estate_faq.items():
-        if user_input.lower() == question.lower():
-            return {"response": answer}
-    
-    # Fallback: Generate a response using the chatbot
+    # If not, generate a response using the chatbot
     try:
-        response = chatbot(user_input, max_length=1000, pad_token_id=50256)
+        response = chatbot(question, max_length=1000, pad_token_id=50256)
         return {"response": response[0]["generated_text"]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Model error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
+
+# Make sure app runs on deployment services like Railway
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))  # Use PORT from environment or default to 8000
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
